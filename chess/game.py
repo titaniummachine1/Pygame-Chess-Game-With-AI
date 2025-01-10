@@ -155,8 +155,10 @@ class GameState:
             if move.piece in ['wP', 'bP'] and move.endSq == self.en_passant_target:
                 # En passant capture
                 capture_sq = move.endSq + (8 if move.piece == 'wP' else -8)
+                move.captured_piece = self._get_piece_at_square(capture_sq, self._opposite_side())
                 self._remove_piece_at_square(capture_sq, self._opposite_side())
             else:
+                move.captured_piece = self._get_piece_at_square(move.endSq, self._opposite_side())
                 self._remove_piece_at_square(move.endSq, self._opposite_side())
 
         # 3) Move the piece on the board
@@ -407,3 +409,35 @@ class GameState:
         elif not self.whiteToMove and self.black_drawback:
             return self.black_drawback.prune_moves_func(self, moves)
         return moves
+
+    def _get_piece_at_square(self, sq: int, side_is_white: bool) -> str:
+        """
+        Return the piece at the given square for the specified side.
+        """
+        if side_is_white:
+            if test_bit(self.whitePawns, sq):
+                return 'P'
+            elif test_bit(self.whiteKnights, sq):
+                return 'N'
+            elif test_bit(self.whiteBishops, sq):
+                return 'B'
+            elif test_bit(self.whiteRooks, sq):
+                return 'R'
+            elif test_bit(self.whiteQueen, sq):
+                return 'Q'
+            elif test_bit(self.whiteKing, sq):
+                return 'K'
+        else:
+            if test_bit(self.blackPawns, sq):
+                return 'p'
+            elif test_bit(self.blackKnights, sq):
+                return 'n'
+            elif test_bit(self.blackBishops, sq):
+                return 'b'
+            elif test_bit(self.blackRooks, sq):
+                return 'r'
+            elif test_bit(self.blackQueen, sq):
+                return 'q'
+            elif test_bit(self.blackKing, sq):
+                return 'k'
+        return None

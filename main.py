@@ -3,6 +3,7 @@ import sys
 import asyncio
 import copy
 import time
+import logging
 
 from chess.game import GameState
 from chess.movegen import generate_all_moves
@@ -20,9 +21,9 @@ WINDOW_WIDTH = BOARD_SIZE
 WINDOW_HEIGHT = BOARD_SIZE + TOP_PANEL_HEIGHT
 ROWS, COLS = 8, 8
 SQUARE_SIZE = BOARD_SIZE // COLS
-FPS = 30
-DEPTH_Setting = 18
-time_limit_Setting = 30
+FPS = 24
+DEPTH_Setting = 3
+time_limit_Setting = None
 
 WIN = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Chess with AI Analysis Overlay")
