@@ -1,0 +1,21 @@
+# chess/pieces.py
+# Constants for referencing piece codes as strings.
+
+WHITE_PAWN   = 'wP'
+WHITE_KNIGHT = 'wN'
+WHITE_BISHOP = 'wB'
+WHITE_ROOK   = 'wR'
+WHITE_QUEEN  = 'wQ'
+WHITE_KING   = 'wK'
+
+BLACK_PAWN   = 'bP'
+BLACK_KNIGHT = 'bN'
+BLACK_BISHOP = 'bB'
+BLACK_ROOK   = 'bR'
+BLACK_QUEEN  = 'bQ'
+BLACK_KING   = 'bK'
+
+ALL_PIECES = [
+    WHITE_PAWN, WHITE_KNIGHT, WHITE_BISHOP, WHITE_ROOK, WHITE_QUEEN, WHITE_KING,
+    BLACK_PAWN, BLACK_KNIGHT, BLACK_BISHOP, BLACK_ROOK, BLACK_QUEEN, BLACK_KING
+]
