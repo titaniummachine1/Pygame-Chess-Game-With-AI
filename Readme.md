@@ -1,5 +1,8 @@
 # Pygame Chess Game With AI
 
+![image](https://github.com/user-attachments/assets/206b370f-09fd-473f-9e81-123adb985ffb)
+
+
 This is a custom chess variant game built using Pygame. The game includes AI functionality and various chess features.
 
 ## Features
