@@ -59,7 +59,7 @@ def drawPieces(win, state: GameState):
     drawBitboard(state.whiteKnights, 'wN')
     drawBitboard(state.whiteBishops, 'wB')
     drawBitboard(state.whiteRooks,   'wR')
-    drawBitboard(state.whiteQueen,   'wQ')
+    drawBitboard(state.whiteQueens,  'wQ')
     drawBitboard(state.whiteKing,    'wK')
 
     # Black pieces
@@ -67,7 +67,7 @@ def drawPieces(win, state: GameState):
     drawBitboard(state.blackKnights, 'bN')
     drawBitboard(state.blackBishops, 'bB')
     drawBitboard(state.blackRooks,   'bR')
-    drawBitboard(state.blackQueen,   'bQ')
+    drawBitboard(state.blackQueens,  'bQ')
     drawBitboard(state.blackKing,    'bK')
 
 def main():
@@ -123,9 +123,40 @@ def main():
                         if ai_move:
                             gameState.make_move(ai_move)
 
-                    # Clear the selection
-                    selectedSquare = None
-                    movesForSelected = []
+                        # Clear the selection
+                        selectedSquare = None
+                        movesForSelected = []
+                    else:
+                        # Check if the new square selects another piece of the same color
+                        piece_color = 'w' if gameState.whiteToMove else 'b'
+                        piece_at_sq = None
+                        piece_bitboards = {
+                            'wP': gameState.whitePawns,
+                            'wN': gameState.whiteKnights,
+                            'wB': gameState.whiteBishops,
+                            'wR': gameState.whiteRooks,
+                            'wQ': gameState.whiteQueens,
+                            'wK': gameState.whiteKing,
+                            'bP': gameState.blackPawns,
+                            'bN': gameState.blackKnights,
+                            'bB': gameState.blackBishops,
+                            'bR': gameState.blackRooks,
+                            'bQ': gameState.blackQueens,
+                            'bK': gameState.blackKing,
+                        }
+                        for piece, bitboard in piece_bitboards.items():
+                            if piece.startswith(piece_color) and test_bit(bitboard, sq):
+                                piece_at_sq = piece
+                                break
+                        if piece_at_sq:
+                            # Switch selection to the new piece
+                            allMoves = generate_all_moves(gameState)
+                            movesForSelected = [m for m in allMoves if m.startSq == sq]
+                            selectedSquare = (row, col)
+                        else:
+                            # Clear the selection
+                            selectedSquare = None
+                            movesForSelected = []
 
         # Draw the board + pieces
         drawBoard(WIN)

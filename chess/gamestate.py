@@ -31,8 +31,9 @@ class GameState:
         # White to move = True, else Black
         self.whiteToMove = True
 
-        # For 'king en passant' capturing
-        self.kingGhostSquares = []
+        # Ghost squares for en passant and castling
+        self.pawnGhostSquares = 0
+        self.kingGhostSquares = 0
 
         # Move history for undo
         self.move_history = []
@@ -60,7 +61,8 @@ class GameState:
         self.blackRooks = self.blackQueen = self.blackKing = 0
 
         self.whiteToMove = True
-        self.kingGhostSquares.clear()
+        self.pawnGhostSquares = 0
+        self.kingGhostSquares = 0
         self.move_history.clear()
 
         self.whiteKingMoved   = False
@@ -116,6 +118,10 @@ class GameState:
         old_pos = self._snapshot()
         self.move_history.append((move, old_pos))
 
+        # Clear ghost squares at the start of the turn
+        self.pawnGhostSquares = 0
+        self.kingGhostSquares = 0
+
         # If capture => remove the piece from 'endSq' or do en passant removal
         if move.isCapture:
             if move.piece in ['wP','bP'] and move.endSq == self.en_passant_target:
@@ -130,17 +136,18 @@ class GameState:
         self._move_piece_on_board(move.piece, move.startSq, move.endSq)
         self._update_move_flags(move)
 
-        # Clear kingGhostSquares unless castling
-        self.kingGhostSquares.clear()
+        # Handle castling => record ghost squares + move the rook
         if move.isCastle:
             path = self._king_castle_path(move.startSq, move.endSq)
-            self.kingGhostSquares = path
+            for sq in path:
+                self.kingGhostSquares = set_bit(self.kingGhostSquares, sq)
             self._move_rook_for_castle(move)
 
         # If a pawn moved 2 squares, set en_passant_target behind it
         if move.piece in ['wP','bP'] and abs(move.startSq - move.endSq) == 16:
             direction = -8 if move.piece == 'wP' else 8
             self.en_passant_target = move.endSq + direction
+            self.pawnGhostSquares = set_bit(self.pawnGhostSquares, self.en_passant_target)
         else:
             self.en_passant_target = None
 
@@ -162,6 +169,8 @@ class GameState:
             self.blackPawns, self.blackKnights, self.blackBishops, self.blackRooks,
             self.blackQueen, self.blackKing,
             self.whiteToMove,
+            self.pawnGhostSquares,
+            self.kingGhostSquares,
             list(self.kingGhostSquares),
             self.whiteKingMoved, self.whiteRookAMoved, self.whiteRookHMoved,
             self.blackKingMoved, self.blackRookAMoved, self.blackRookHMoved,
@@ -174,6 +183,8 @@ class GameState:
           self.blackPawns, self.blackKnights, self.blackBishops, self.blackRooks,
           self.blackQueen, self.blackKing,
           self.whiteToMove,
+          self.pawnGhostSquares,
+          self.kingGhostSquares,
           king_ghost_list,
           self.whiteKingMoved, self.whiteRookAMoved, self.whiteRookHMoved,
           self.blackKingMoved, self.blackRookAMoved, self.blackRookHMoved,
