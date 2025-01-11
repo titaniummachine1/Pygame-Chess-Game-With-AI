@@ -7,6 +7,7 @@ from chess.movegen import generate_all_moves
 from chess.move import Move
 from chess.bitboard import coords_to_square, square_to_coords, test_bit
 from chess.pieces import ALL_PIECES
+from chess.ai.ai_player import AIPlayer
 
 pygame.init()
 
@@ -77,6 +78,9 @@ def main():
     gameState = GameState()
     gameState.init_standard_position()
 
+    # Initialize AI player
+    ai_player = AIPlayer(gameState)
+
     selectedSquare = None      # (row, col) for the piece the user selected
     movesForSelected = []      # possible moves from that square
 
@@ -113,6 +117,11 @@ def main():
                     if chosenMove:
                         # Make the move
                         gameState.make_move(chosenMove)
+
+                        # AI makes a move
+                        ai_move = ai_player.select_move()
+                        if ai_move:
+                            gameState.make_move(ai_move)
 
                     # Clear the selection
                     selectedSquare = None
