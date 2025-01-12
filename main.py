@@ -13,7 +13,7 @@ pygame.init()
 WIDTH, HEIGHT = 800, 800
 ROWS, COLS = 8, 8
 SQUARE_SIZE = WIDTH // COLS
-FPS = 24
+FPS = 12
 
 # Adjust window size to accommodate the mode selection buttons
 WINDOW_HEIGHT = HEIGHT + 100

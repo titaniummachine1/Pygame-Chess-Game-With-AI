@@ -1,3 +1,5 @@
+# game_state.py
+
 from .bitboard import (
     test_bit, set_bit, clear_bit, coords_to_square, square_to_coords, in_bounds
 )
@@ -246,13 +248,14 @@ class GameState:
             self.blackQueen, self.blackKing,
             self.whiteToMove,
             self.pawnGhostSquares,
-            self.kingGhostSquares,  # Updated
+            self.whiteKingGhostSquares,
+            self.blackKingGhostSquares,
             self.whiteKingMoved, self.whiteRookAMoved, self.whiteRookHMoved,
             self.blackKingMoved, self.blackRookAMoved, self.blackRookHMoved,
             self.en_passant_target,
             self.halfmove_clock,
             self.repetition_history.copy(),
-            self.game_over  # Ensure game_over is included
+            self.game_over  # Added game_over here
         )
 
     def _restore_snapshot(self, snap):
@@ -264,13 +267,14 @@ class GameState:
             self.blackQueen, self.blackKing,
             self.whiteToMove,
             self.pawnGhostSquares,
-            self.kingGhostSquares,  # Updated
+            self.whiteKingGhostSquares,
+            self.blackKingGhostSquares,
             self.whiteKingMoved, self.whiteRookAMoved, self.whiteRookHMoved,
             self.blackKingMoved, self.blackRookAMoved, self.blackRookHMoved,
             self.en_passant_target,
             self.halfmove_clock,
             self.repetition_history,
-            self.game_over  # Ensure game_over is restored
+            self.game_over  # Added game_over here
         ) = snap
 
     def _opposite_side(self) -> bool:
