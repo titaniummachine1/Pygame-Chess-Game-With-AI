@@ -16,7 +16,7 @@ SQUARE_SIZE = WIDTH // COLS
 FPS = 12
 
 # Adjust window size to accommodate the mode selection buttons
-WINDOW_HEIGHT = HEIGHT + 100
+WINDOW_HEIGHT = HEIGHT + 150
 BOARD_OFFSET_Y = 100
 
 WIN = pygame.display.set_mode((WIDTH, WINDOW_HEIGHT))
@@ -128,6 +128,15 @@ def draw_button(win, x, y, width, height, text, is_hovered):
     text_rect = text_surface.get_rect(center=(x + width // 2, y + height // 2))
     win.blit(text_surface, text_rect)
 
+def draw_info(win, depth, evaluation, positions):
+    """
+    Draw the current depth of search, evaluation, and the number of analyzed positions.
+    """
+    info_text = f"Depth: {depth}  Eval: {evaluation:.2f}  Positions: {positions}"
+    text_surface = FONT.render(info_text, True, BUTTON_TEXT_COLOR)
+    text_rect = text_surface.get_rect(center=(WIDTH // 2, BUTTON_Y + BUTTON_HEIGHT + 20))
+    win.blit(text_surface, text_rect)
+
 def main():
     clock = pygame.time.Clock()
     loadImages()
@@ -148,6 +157,11 @@ def main():
     selectedPieceSetup = None  # 'wP', 'bQ', etc.
 
     mode = 'AI'  # Modes: 'AI', 'Manual', 'Setup'
+
+    # Variables to track AI search info
+    current_depth = 0
+    current_evaluation = 0.0
+    analyzed_positions = 0
 
     run = True
     while run:
@@ -251,6 +265,10 @@ def main():
                                     ai_move = ai_player.select_move()
                                     if ai_move:
                                         gameState.make_move(ai_move)
+                                        # Update AI search info
+                                        current_depth = ai_player.depth
+                                        current_evaluation = ai_player.current_evaluation
+                                        analyzed_positions = ai_player.analyzed_positions
                                 # Clear selections after move
                                 selectedSquare = None
                                 movesForSelected = []
@@ -294,6 +312,9 @@ def main():
         draw_button(WIN, AI_BUTTON_X, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, 'AI Mode', ai_button_hovered)
         draw_button(WIN, MANUAL_BUTTON_X, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, 'Manual Mode', manual_button_hovered)
         draw_button(WIN, SETUP_BUTTON_X, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, 'Setup Mode', setup_button_hovered)
+
+        # Draw AI search info
+        draw_info(WIN, current_depth, current_evaluation, analyzed_positions)
 
         pygame.display.flip()
 

@@ -198,18 +198,27 @@ class GameState:
         # 10. Clear opponent's ghost squares if it's their turn now
         self.kingGhostSquares = 0
 
-        # 11. Update repetition history and check for draw conditions
+        # 11. Check if the king of the player opposite to the one who moved is missing
+        if (not self.whiteToMove and self.whiteKing == 0) or (self.whiteToMove and self.blackKing == 0):
+            self.game_over = True
+            if not self.whiteToMove:
+                print("Black wins! White king is missing.")
+            else:
+                print("White wins! Black king is missing.")
+            return
+
+        # 12. Update repetition history and check for draw conditions
         self._update_repetition_history()
         if self._is_threefold_repetition():
             print("Threefold repetition detected. Game is a draw.")
             self._end_game()
 
-        # 12. Check for 50-move rule
+        # 13. Check for 50-move rule
         if self.halfmove_clock >= 50:
             print("50-move rule reached. Game is a draw.")
             self._end_game()
 
-        # 13. Check for loss condition (no legal moves)
+        # 14. Check for loss condition (no legal moves)
         if not self._has_legal_moves():
             print("Player loses due to no legal moves.")
             self._end_game()

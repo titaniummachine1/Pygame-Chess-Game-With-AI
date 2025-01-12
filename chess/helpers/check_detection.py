@@ -5,7 +5,11 @@ def is_square_attacked(game_state, square, by_white):
     """
     Check if a square is attacked by the opponent.
     """
+    original_white_to_move = game_state.whiteToMove
+    game_state.whiteToMove = by_white
     opponent_moves = generate_all_moves(game_state)
+    game_state.whiteToMove = original_white_to_move
+
     for move in opponent_moves:
         if move.endSq == square:
             return True

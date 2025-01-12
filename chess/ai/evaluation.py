@@ -52,9 +52,12 @@ def evaluate_board(game_state):
                     black_material += piece_value + piece_square_table[sq]
 
     # Penalize positions where the king is in danger
-    if is_square_attacked(game_state, game_state.whiteKing, False):
+    white_king_sq = game_state.whiteKing.bit_length() - 1
+    black_king_sq = game_state.blackKing.bit_length() - 1
+
+    if is_square_attacked(game_state, white_king_sq, False):
         white_material -= 50  # Adjust the penalty value as needed
-    if is_square_attacked(game_state, game_state.blackKing, True):
+    if is_square_attacked(game_state, black_king_sq, True):
         black_material -= 50  # Adjust the penalty value as needed
 
     return white_material - black_material
