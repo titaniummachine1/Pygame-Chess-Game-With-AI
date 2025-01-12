@@ -20,6 +20,7 @@ class GameState:
 
     def __init__(self, white_drawback=None, black_drawback=None):
         # Bitboards for each piece type, White & Black
+        self.game_over = False
         self.whitePawns   = 0
         self.whiteKnights = 0
         self.whiteBishops = 0

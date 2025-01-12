@@ -1,6 +1,4 @@
-import random
 from chess.movegen import generate_all_moves
-from chess.move import Move
 from chess.ai.evaluation import evaluate_board
 
 PIECE_VALUES = {
@@ -17,6 +15,9 @@ class AIPlayer:
         """
         Select a move for the AI player using the minimax algorithm.
         """
+        if self.game_state.game_over:
+            return None  # No moves possible when the game is over
+
         best_move = None
         best_value = float('-inf') if self.game_state.whiteToMove else float('inf')
         all_moves = generate_all_moves(self.game_state)
@@ -41,10 +42,13 @@ class AIPlayer:
         """
         Minimax algorithm to evaluate the board state.
         """
-        if depth == 0:
+        if depth == 0 or self.game_state.game_over:
             return evaluate_board(self.game_state)
 
         all_moves = generate_all_moves(self.game_state)
+        if not all_moves:
+            return evaluate_board(self.game_state)  # Return evaluation if no moves left
+
         if is_maximizing:
             max_eval = float('-inf')
             for move in all_moves:

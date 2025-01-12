@@ -373,6 +373,13 @@ def generate_all_moves(game_state):
     Generate all possible moves for the given game state.
     """
     moves = []
+
+    # Check if the current player has their king
+    if game_state.whiteToMove and game_state.whiteKing == 0:
+        return moves  # No moves if white king is missing
+    if not game_state.whiteToMove and game_state.blackKing == 0:
+        return moves  # No moves if black king is missing
+
     if game_state.whiteToMove:
         # Generate moves for white pieces
         moves.extend(generate_pawn_moves(game_state, True))

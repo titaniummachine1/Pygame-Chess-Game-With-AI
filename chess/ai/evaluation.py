@@ -1,6 +1,7 @@
 from chess.pieces import ALL_PIECES
 from chess.helpers.bitboard_helpers import test_bit
 from chess.ai.piece_square_tables import PAWN_TABLE, KNIGHT_TABLE, BISHOP_TABLE, ROOK_TABLE, QUEEN_TABLE, KING_TABLE
+from chess.helpers.check_detection import is_square_attacked  # Import the function to check if a square is attacked
 
 PIECE_VALUES = {
     'wP': 1, 'wN': 3, 'wB': 3, 'wR': 5, 'wQ': 9, 'wK': 0,
@@ -15,7 +16,14 @@ PIECE_SQUARE_TABLES = {
 def evaluate_board(game_state):
     """
     Evaluate the board based on material count and piece-square tables.
+    Return -1000 if the white king is missing and 1000 if the black king is missing.
+    Penalize positions where the king is in danger.
     """
+    if game_state.whiteKing == 0:
+        return -1000  # White king is missing, black wins
+    if game_state.blackKing == 0:
+        return 1000  # Black king is missing, white wins
+
     white_material = 0
     black_material = 0
 
@@ -42,5 +50,11 @@ def evaluate_board(game_state):
                     white_material += piece_value + piece_square_table[sq]
                 else:
                     black_material += piece_value + piece_square_table[sq]
+
+    # Penalize positions where the king is in danger
+    if is_square_attacked(game_state, game_state.whiteKing, False):
+        white_material -= 50  # Adjust the penalty value as needed
+    if is_square_attacked(game_state, game_state.blackKing, True):
+        black_material -= 50  # Adjust the penalty value as needed
 
     return white_material - black_material

@@ -1,9 +1,15 @@
 from chess.bitboard import test_bit, coords_to_square, square_to_coords, in_bounds
+from chess.movegen import generate_all_moves
 
-def is_square_attacked(sq: int, by_white: bool, game_state) -> bool:
-    """Check if the specified square is attacked by the specified side."""
-    attackers = get_attackers(sq, by_white, game_state)
-    return bool(attackers)
+def is_square_attacked(game_state, square, by_white):
+    """
+    Check if a square is attacked by the opponent.
+    """
+    opponent_moves = generate_all_moves(game_state)
+    for move in opponent_moves:
+        if move.endSq == square:
+            return True
+    return False
 
 def get_attackers(sq: int, by_white: bool, game_state) -> list:
     """Get a list of pieces attacking the specified square."""
