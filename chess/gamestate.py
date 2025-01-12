@@ -1,5 +1,3 @@
-# game_state.py
-
 from .bitboard import (
     test_bit, set_bit, clear_bit, coords_to_square, square_to_coords, in_bounds
 )
@@ -13,6 +11,7 @@ from .helpers.check_detection import is_square_attacked, get_attackers
 class GameState:
     """
     Holds piece bitboards, manages moves, castling, en passant, etc.
+    Supports capturing the king via en passant after castling.
     """
 
     def __init__(self, white_drawback=None, black_drawback=None):
@@ -21,6 +20,7 @@ class GameState:
         self._initialize_drawbacks(white_drawback, black_drawback)
         self.halfmove_clock = 0
         self.repetition_history = {}
+        self.game_over = False  # Ensure game_over attribute is initialized
 
     def _initialize_bitboards(self):
         """Initialize piece bitboards."""
@@ -41,18 +41,19 @@ class GameState:
     def _initialize_flags(self):
         """Initialize flags and other state variables."""
         self.whiteToMove = True
-        self.pawnGhostSquares = 0
-        self.kingGhostSquares = 0
+        self.pawnGhostSquares = 0  # For pawn en passant
+        self.kingGhostSquares = 0  # For king en passant
         self.move_history = []
 
         self.whiteKingMoved    = False
-        self.whiteRookAMoved   = False
-        self.whiteRookHMoved   = False
+        self.whiteRookAMoved   = False  # a1
+        self.whiteRookHMoved   = False  # h1
         self.blackKingMoved    = False
-        self.blackRookAMoved   = False
-        self.blackRookHMoved   = False
+        self.blackRookAMoved   = False  # a8
+        self.blackRookHMoved   = False  # h8
 
-        self.en_passant_target = None
+        self.en_passant_target = None  # Square index for en passant
+        self.game_over = False         # Flag to indicate if the game has ended
 
     def _initialize_drawbacks(self, white_drawback, black_drawback):
         """Initialize drawbacks for both players."""
@@ -65,13 +66,14 @@ class GameState:
         self._initialize_flags()
         self.halfmove_clock = 0
         self.repetition_history = {}
+        self.game_over = False  # Reset game_over flag
 
         # White pawns on row=6
         for col in range(8):
             sq = coords_to_square(6, col)
             self.whitePawns = set_bit(self.whitePawns, sq)
 
-        # White rooks etc. on row=7
+        # White rooks, knights, bishops, queen, king on row=7
         self.whiteRooks = set_bit(self.whiteRooks, coords_to_square(7, 0))
         self.whiteRooks = set_bit(self.whiteRooks, coords_to_square(7, 7))
         self.whiteKnights = set_bit(self.whiteKnights, coords_to_square(7, 1))
@@ -86,7 +88,7 @@ class GameState:
             sq = coords_to_square(1, col)
             self.blackPawns = set_bit(self.blackPawns, sq)
 
-        # Black rooks etc. on row=0
+        # Black rooks, knights, bishops, queen, king on row=0
         self.blackRooks = set_bit(self.blackRooks, coords_to_square(0, 0))
         self.blackRooks = set_bit(self.blackRooks, coords_to_square(0, 7))
         self.blackKnights = set_bit(self.blackKnights, coords_to_square(0, 1))
@@ -112,62 +114,100 @@ class GameState:
 
     def make_move(self, move: Move):
         """Make a move on the board."""
+        if self.game_over:
+            print("Game is already over. No more moves can be made.")
+            return
+
+        # 1. Save snapshot for undo
         old_pos = self._snapshot()
         self.move_history.append((move, old_pos))
 
-        if self.whiteToMove:
-            self.pawnGhostSquares = 0
-            self.kingGhostSquares = 0
+        # 2. Clear own ghost squares at the start of the move
+        self.kingGhostSquares = 0
 
-        if move.isCapture or move.piece in ['wP', 'bP']:
-            self.halfmove_clock = 0
-        else:
-            self.halfmove_clock += 1
+        # 3. Check if the move.endSq is in opponent's ghost squares
+        if test_bit(self.kingGhostSquares, move.endSq):
+            # Capture the opponent's king
+            if self.whiteToMove:
+                self.blackKing = clear_bit(self.blackKing, move.endSq)
+                print("White captures Black King via King En Passant!")
+            else:
+                self.whiteKing = clear_bit(self.whiteKing, move.endSq)
+                print("Black captures White King via King En Passant!")
+            # Set game over flag
+            self.game_over = True
+            # Toggle side to move (optional, since game is over)
+            self.whiteToMove = not self.whiteToMove
+            return  # Exit after capturing the king
 
+        # 4. Handle captures
         if move.isCapture:
             if move.piece in ['wP','bP'] and move.endSq == self.en_passant_target:
+                # En passant capture for pawns
                 capture_sq = move.endSq + (8 if move.piece == 'wP' else -8)
                 remove_piece_at_square(capture_sq, self._opposite_side(), self)
+                print(f"En Passant Capture at square {capture_sq}.")
             elif test_bit(self.kingGhostSquares, move.endSq):
+                # Capture via King En Passant
                 remove_piece_at_square(move.endSq, self._opposite_side(), self)
+                print(f"King captured at square {move.endSq} via King En Passant.")
             else:
+                # Regular capture
                 remove_piece_at_square(move.endSq, self._opposite_side(), self)
+                print(f"Captured piece at square {move.endSq}.")
 
+            # Reset halfmove clock after a capture
+            self.halfmove_clock = 0
+        else:
+            # Increment halfmove clock if no capture or pawn move
+            self.halfmove_clock += 1
+
+        # 5. Move the piece
         move_piece_on_board(move.piece, move.startSq, move.endSq, self)
+        print(f"Moved {move.piece} from {move.startSq} to {move.endSq}.")
+
+        # 6. Update movement flags if necessary
         self._update_move_flags(move)
 
+        # 7. Handle castling
         if move.isCastle:
             path = self._king_castle_path(move.startSq, move.endSq)
+            # Set ghost squares for King En Passant
             for sq in path:
                 self.kingGhostSquares = set_bit(self.kingGhostSquares, sq)
             self.kingGhostSquares = set_bit(self.kingGhostSquares, move.startSq)
+            self.kingGhostSquares = set_bit(self.kingGhostSquares, move.endSq)
             self._move_rook_for_castle(move)
+            print("Castling move handled.")
 
-        if move.piece in ['wP','bP'] and abs(move.startSq - move.endSq) == 16:
+        # 8. Handle en passant target
+        if move.piece in ['wP', 'bP'] and abs(move.startSq - move.endSq) == 16:
             direction = -8 if move.piece == 'wP' else 8
             self.en_passant_target = move.endSq + direction
             self.pawnGhostSquares = set_bit(self.pawnGhostSquares, self.en_passant_target)
+            print(f"En Passant target set at square {self.en_passant_target}.")
         else:
             self.en_passant_target = None
 
+        # 9. Toggle side to move
         self.whiteToMove = not self.whiteToMove
+        print(f"Turn toggled. White to move: {self.whiteToMove}")
 
-        if not self.whiteToMove:
-            self.pawnGhostSquares = 0
-            self.kingGhostSquares = 0
+        # 10. Clear opponent's ghost squares if it's their turn now
+        self.kingGhostSquares = 0
 
-        # Check for threefold repetition
+        # 11. Update repetition history and check for draw conditions
         self._update_repetition_history()
         if self._is_threefold_repetition():
             print("Threefold repetition detected. Game is a draw.")
             self._end_game()
 
-        # Check for 50-move rule
+        # 12. Check for 50-move rule
         if self.halfmove_clock >= 50:
             print("50-move rule reached. Game is a draw.")
             self._end_game()
 
-        # Check for win condition
+        # 13. Check for loss condition (no legal moves)
         if not self._has_legal_moves():
             print("Player loses due to no legal moves.")
             self._end_game()
@@ -175,18 +215,26 @@ class GameState:
     def unmake_move(self, move: Move):
         """Undo the last move."""
         if not self.move_history:
+            print("No moves to unmake.")
             return
         lastMove, old_state = self.move_history.pop()
         if lastMove != move:
+            print("The move to unmake does not match the last move made.")
             return
         self._restore_snapshot(old_state)
+        print(f"Move {move} has been undone.")
 
     def prune_moves(self, moves):
         """Prune moves based on the current player's drawback."""
         if self.whiteToMove and self.white_drawback:
-            return self.white_drawback.prune_moves_func(self, moves)
+            pruned = self.white_drawback.prune_moves_func(self, moves)
+            print(f"Pruned moves for White: {len(moves)} -> {len(pruned)}")
+            return pruned
         elif not self.whiteToMove and self.black_drawback:
-            return self.black_drawback.prune_moves_func(self, moves)
+            pruned = self.black_drawback.prune_moves_func(self, moves)
+            print(f"Pruned moves for Black: {len(moves)} -> {len(pruned)}")
+            return pruned
+        print("No pruning applied to moves.")
         return moves
 
     def _snapshot(self):
@@ -198,33 +246,32 @@ class GameState:
             self.blackQueen, self.blackKing,
             self.whiteToMove,
             self.pawnGhostSquares,
-            self.kingGhostSquares,
-            list(self.kingGhostSquares),
+            self.kingGhostSquares,  # Updated
             self.whiteKingMoved, self.whiteRookAMoved, self.whiteRookHMoved,
             self.blackKingMoved, self.blackRookAMoved, self.blackRookHMoved,
             self.en_passant_target,
             self.halfmove_clock,
-            self.repetition_history.copy()
+            self.repetition_history.copy(),
+            self.game_over  # Ensure game_over is included
         )
 
     def _restore_snapshot(self, snap):
         """Restore the game state from a snapshot."""
-        ( self.whitePawns, self.whiteKnights, self.whiteBishops, self.whiteRooks,
-          self.whiteQueen, self.whiteKing,
-          self.blackPawns, self.blackKnights, self.blackBishops, self.blackRooks,
-          self.blackQueen, self.blackKing,
-          self.whiteToMove,
-          self.pawnGhostSquares,
-          self.kingGhostSquares,
-          king_ghost_list,
-          self.whiteKingMoved, self.whiteRookAMoved, self.whiteRookHMoved,
-          self.blackKingMoved, self.blackRookAMoved, self.blackRookHMoved,
-          self.en_passant_target,
-          self.halfmove_clock,
-          self.repetition_history
+        (
+            self.whitePawns, self.whiteKnights, self.whiteBishops, self.whiteRooks,
+            self.whiteQueen, self.whiteKing,
+            self.blackPawns, self.blackKnights, self.blackBishops, self.blackRooks,
+            self.blackQueen, self.blackKing,
+            self.whiteToMove,
+            self.pawnGhostSquares,
+            self.kingGhostSquares,  # Updated
+            self.whiteKingMoved, self.whiteRookAMoved, self.whiteRookHMoved,
+            self.blackKingMoved, self.blackRookAMoved, self.blackRookHMoved,
+            self.en_passant_target,
+            self.halfmove_clock,
+            self.repetition_history,
+            self.game_over  # Ensure game_over is restored
         ) = snap
-
-        self.kingGhostSquares = king_ghost_list
 
     def _opposite_side(self) -> bool:
         """Return the opposite side to move."""
@@ -239,7 +286,7 @@ class GameState:
             path.append(current)
             current += step
         if path:
-            path.pop()
+            path.pop()  # Exclude the final square
         return path
 
     def _move_rook_for_castle(self, move: Move):
@@ -249,34 +296,42 @@ class GameState:
 
         if move.piece == WHITE_KING:
             if (start_row, start_col) == (7, 4) and (end_row, end_col) == (7, 6):
+                # Kingside castling for White: Move rook from h1 to f1
                 oldSq = coords_to_square(7, 7)  # h1
                 newSq = coords_to_square(7, 5)  # f1
                 if test_bit(self.whiteRooks, oldSq):
                     self.whiteRooks = clear_bit(self.whiteRooks, oldSq)
                     self.whiteRooks = set_bit(self.whiteRooks, newSq)
+                    print(f"White Rook moved from {oldSq} to {newSq}.")
                 self.whiteRookHMoved = True
             elif (start_row, start_col) == (7, 4) and (end_row, end_col) == (7, 2):
+                # Queenside castling for White: Move rook from a1 to d1
                 oldSq = coords_to_square(7, 0)  # a1
                 newSq = coords_to_square(7, 3)  # d1
                 if test_bit(self.whiteRooks, oldSq):
                     self.whiteRooks = clear_bit(self.whiteRooks, oldSq)
                     self.whiteRooks = set_bit(self.whiteRooks, newSq)
+                    print(f"White Rook moved from {oldSq} to {newSq}.")
                 self.whiteRookAMoved = True
 
         elif move.piece == BLACK_KING:
             if (start_row, start_col) == (0, 4) and (end_row, end_col) == (0, 6):
+                # Kingside castling for Black: Move rook from h8 to f8
                 oldSq = coords_to_square(0, 7)  # h8
                 newSq = coords_to_square(0, 5)  # f8
                 if test_bit(self.blackRooks, oldSq):
                     self.blackRooks = clear_bit(self.blackRooks, oldSq)
                     self.blackRooks = set_bit(self.blackRooks, newSq)
+                    print(f"Black Rook moved from {oldSq} to {newSq}.")
                 self.blackRookHMoved = True
             elif (start_row, start_col) == (0, 4) and (end_row, end_col) == (0, 2):
+                # Queenside castling for Black: Move rook from a8 to d8
                 oldSq = coords_to_square(0, 0)  # a8
                 newSq = coords_to_square(0, 3)  # d8
                 if test_bit(self.blackRooks, oldSq):
                     self.blackRooks = clear_bit(self.blackRooks, oldSq)
                     self.blackRooks = set_bit(self.blackRooks, newSq)
+                    print(f"Black Rook moved from {oldSq} to {newSq}.")
                 self.blackRookAMoved = True
 
     def _update_move_flags(self, move: Move):
@@ -325,28 +380,20 @@ class GameState:
     def _has_legal_moves(self) -> bool:
         """Check if the current player has any legal moves."""
         all_moves = generate_all_moves(self)
-        for move in all_moves:
-            self.make_move(move)
-            if not self._is_in_check():
-                self.unmake_move(move)
-                return True
-            self.unmake_move(move)
-        return False
-
-    def _is_in_check(self) -> bool:
-        """Check if the current player's king is in check."""
-        king_sq = self._get_king_square(self.whiteToMove)
-        return is_square_attacked(king_sq, not self.whiteToMove, self)
-
-    def _get_king_square(self, white: bool) -> int:
-        """Get the square of the king for the specified side."""
-        king_bitboard = self.whiteKing if white else self.blackKing
-        for sq in range(64):
-            if test_bit(king_bitboard, sq):
-                return sq
-        return -1
+        return len(all_moves) > 0
 
     def _end_game(self):
         """End the game."""
-        print("Game over.")
-        # Implement game over logic here (e.g., display message, reset game, etc.)
+        self.game_over = True
+        if not self.whiteToMove:
+            print("White wins!")
+        else:
+            print("Black wins!")
+        # Implement additional game over logic here (e.g., display message, reset game, etc.)
+
+def path_bitboard(path: list) -> int:
+    """Convert a list of squares into a bitboard."""
+    bitboard = 0
+    for square in path:
+        bitboard = set_bit(bitboard, square)
+    return bitboard
