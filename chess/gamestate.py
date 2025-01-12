@@ -115,9 +115,9 @@ class GameState:
         old_pos = self._snapshot()
         self.move_history.append((move, old_pos))
 
-        # Clear ghost squares at the beginning of the move
-        self.pawnGhostSquares = 0
-        self.kingGhostSquares = 0
+        if self.whiteToMove:
+            self.pawnGhostSquares = 0
+            self.kingGhostSquares = 0
 
         if move.isCapture or move.piece in ['wP', 'bP']:
             self.halfmove_clock = 0
@@ -128,6 +128,8 @@ class GameState:
             if move.piece in ['wP','bP'] and move.endSq == self.en_passant_target:
                 capture_sq = move.endSq + (8 if move.piece == 'wP' else -8)
                 remove_piece_at_square(capture_sq, self._opposite_side(), self)
+            elif test_bit(self.kingGhostSquares, move.endSq):
+                remove_piece_at_square(move.endSq, self._opposite_side(), self)
             else:
                 remove_piece_at_square(move.endSq, self._opposite_side(), self)
 
@@ -149,6 +151,10 @@ class GameState:
             self.en_passant_target = None
 
         self.whiteToMove = not self.whiteToMove
+
+        if not self.whiteToMove:
+            self.pawnGhostSquares = 0
+            self.kingGhostSquares = 0
 
         # Check for threefold repetition
         self._update_repetition_history()
